@@ -1,0 +1,39 @@
+# Example AI Runtime CLI workload contract.
+# Validate with the installed air CLI before treating this as a GPU gate.
+
+experiment_name: cv-accuracy-levers-baseline-sample
+
+environment:
+  version: "4"
+  dependencies:
+    - mlflow[databricks]>=3.1
+    - numpy>=1.26
+    - python-dotenv>=1.0
+    - scikit-learn>=1.4
+  env_variables:
+    CV_RUNTIME: ai_runtime_cli
+    SAMPLE_MODE: "true"
+    MLFLOW_TRACKING_URI: databricks
+    MLFLOW_REGISTRY_URI: databricks-uc
+    MLFLOW_EXPERIMENT_NAME: cv-accuracy-levers-baseline-sample
+    CV_CATALOG: ${CV_CATALOG}
+    CV_SCHEMA: ${CV_SCHEMA}
+    CV_VOLUME: ${CV_VOLUME}
+    CV_VOLUME_SUBPATH: ${CV_VOLUME_SUBPATH}
+
+compute:
+  num_accelerators: 1
+  accelerator_type: GPU_1xA10
+
+code_source:
+  type: snapshot
+  snapshot:
+    root_path: .
+
+command: >-
+  python $CODE_SOURCE_PATH/scripts/train_baseline.py
+  --sample-mode true
+  --runtime ai_runtime_cli
+  --log-mlflow
+  --tracking-uri databricks
+  --experiment-name cv-accuracy-levers-baseline-sample

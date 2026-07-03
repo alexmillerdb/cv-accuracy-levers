@@ -1,0 +1,88 @@
+bundle:
+  name: cv-accuracy-levers
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for demo metadata.
+    default: main
+  schema:
+    description: Unity Catalog schema for demo metadata.
+    default: cv_accuracy_levers
+  volume:
+    description: Unity Catalog volume for image artifacts and intermediate files.
+    default: cv_accuracy_levers
+  volume_subpath:
+    description: Subdirectory inside the Unity Catalog volume.
+    default: artifacts
+  experiment_name:
+    description: MLflow experiment path or name.
+    default: /Shared/cv-accuracy-levers
+  experiment_id:
+    description: Optional MLflow experiment ID. Prefer this when known.
+    default: ""
+
+resources:
+  jobs:
+    smoke_sample_cpu:
+      name: cv-accuracy-levers-smoke-sample-cpu
+      environments:
+        - environment_key: smoke_cpu_env
+          spec:
+            environment_version: "4"
+            dependencies:
+              - "mlflow[databricks]>=3.1"
+              - "numpy>=1.26"
+              - "python-dotenv>=1.0"
+      tasks:
+        - task_key: tiny_sample
+          environment_key: smoke_cpu_env
+          spark_python_task:
+            python_file: scripts/run_tiny_sample.py
+            parameters:
+              - --runtime
+              - databricks_serverless_cpu
+              - --log-mlflow
+              - --tracking-uri
+              - databricks
+              - --experiment-id
+              - ${var.experiment_id}
+              - --experiment-name
+              - ${var.experiment_name}
+    baseline_sample_cpu:
+      name: cv-accuracy-levers-baseline-sample-cpu
+      environments:
+        - environment_key: baseline_cpu_env
+          spec:
+            environment_version: "4"
+            dependencies:
+              - "mlflow[databricks]>=3.1"
+              - "numpy>=1.26"
+              - "python-dotenv>=1.0"
+              - "scikit-learn>=1.4"
+      tasks:
+        - task_key: baseline_sample
+          environment_key: baseline_cpu_env
+          spark_python_task:
+            python_file: scripts/train_baseline.py
+            parameters:
+              - --runtime
+              - databricks_serverless_cpu
+              - --sample-mode
+              - "true"
+              - --log-mlflow
+              - --tracking-uri
+              - databricks
+              - --experiment-id
+              - ${var.experiment_id}
+              - --experiment-name
+              - ${var.experiment_name}
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      catalog: main
+      schema: cv_accuracy_levers
+      volume: cv_accuracy_levers
+      volume_subpath: artifacts

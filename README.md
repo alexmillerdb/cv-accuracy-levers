@@ -1,2 +1,179 @@
 # cv-accuracy-levers
-Open-source computer-vision accuracy levers demo (crop-first, transfer backbones, recall/threshold tuning, label-error detection) on an open wood-defect dataset. Databricks + MLflow. Capstone-inspired.
+
+Open-source computer-vision accuracy levers demo for recall-first binary image
+classification on an open wood-defect dataset. The project is Databricks +
+MLflow oriented and Capstone-inspired, but it must not contain customer data,
+customer code, customer screenshots, private rubrics, or workspace details.
+
+## Goal
+
+Show a staged, measurable workflow for improving defective-wood recall without
+pretending that one model change fixes every accuracy problem:
+
+1. Start with tested shared functions and a tiny CPU sample.
+2. Validate Databricks connectivity and MLflow logging on serverless CPU.
+3. Add one accuracy lever at a time and record each result in MLflow.
+4. Move to GPU only after the CPU/sample path is working.
+
+The first-class metrics are defective-class recall, precision, false negatives,
+F1, PR AUC, ROC AUC, and the selected operating threshold.
+
+## Runtime Paths
+
+- **Local CPU:** unit tests and tiny fixture/sample runs.
+- **Databricks serverless CPU:** smoke tests, Delta/UC metadata checks, and
+  small MLflow-logged runs.
+- **Notebook GPU:** AI Runtime notebooks or classic MLR GPU clusters for
+  heavier image experiments.
+- **AI Runtime CLI:** deferred until script entrypoints are stable; intended for
+  reproducible remote GPU jobs rather than the first implementation pass.
+
+## IDE Configuration
+
+Copy `.env.example` to `.env` for local IDE defaults. Keep secrets out of
+`.env`; use Databricks CLI/OAuth profile auth instead.
+
+```dotenv
+DATABRICKS_CONFIG_PROFILE=DEFAULT
+DATABRICKS_SERVERLESS_COMPUTE_ID=auto
+MLFLOW_TRACKING_URI=databricks
+MLFLOW_REGISTRY_URI=databricks-uc
+MLFLOW_EXPERIMENT_ID=
+CV_CATALOG=main
+CV_SCHEMA=cv_accuracy_levers
+CV_VOLUME=cv_accuracy_levers
+CV_VOLUME_SUBPATH=artifacts
+```
+
+Prefer `MLFLOW_EXPERIMENT_ID` for IDE-to-Databricks logging. Use
+`MLFLOW_EXPERIMENT_NAME` only when the ID is not known.
+
+## Planned Flow
+
+The notebook and script flow is intentionally phased:
+
+1. `00_setup_and_ingest.py` - open dataset ingest and binary label mapping.
+2. `01_baseline_resnet.py` - whole-image baseline.
+3. `02_threshold_tuning.py` - recall/precision operating point sweep.
+4. `03_error_review_gut_check.py` - high-confidence false-negative review.
+5. `04_label_quality_embeddings.py` - suspected label issues and leakage checks.
+6. `05_crop_first_ab_test.py` - crop-first A/B test.
+7. `06_transfer_backbone.py` - frozen feature backbone comparison.
+8. `07_recommendation_summary.py` - MLflow leaderboard and next action table.
+9. `99_future_hybrid_fusion.py` - guarded future stub for categorical comments.
+
+## Local Verification
+
+```bash
+python -m compileall src tests
+pytest
+```
+
+These commands must pass before notebook work depends on shared functions.
+
+The deterministic tiny sample can also log to local MLflow:
+
+```bash
+python scripts/run_tiny_sample.py \
+  --log-mlflow \
+  --tracking-uri file:/tmp/cv-accuracy-levers-mlruns
+```
+
+After Databricks auth is configured, the same script can be run against
+Databricks MLflow by setting `.env` and using `MLFLOW_TRACKING_URI=databricks`.
+
+## IDE-to-Databricks Verification
+
+Use this order while developing:
+
+1. Local compile/tests and sample script launch.
+2. IDE-launched Databricks smoke checks with profile auth and serverless CPU.
+3. Bundle validation/deploy/run only as the final packaging test.
+
+For IDE-to-Databricks settings, start from `.env.example` and set:
+
+```dotenv
+DATABRICKS_CONFIG_PROFILE=<profile>
+DATABRICKS_SERVERLESS_COMPUTE_ID=auto
+MLFLOW_TRACKING_URI=databricks
+MLFLOW_REGISTRY_URI=databricks-uc
+MLFLOW_EXPERIMENT_ID=<experiment-id>
+CV_RUNTIME=databricks_serverless_cpu
+SAMPLE_MODE=true
+```
+
+For the current Phase 4 baseline, the model computation is local CPU but the
+run can verify IDE-to-Databricks auth and MLflow logging without deploying a
+job bundle:
+
+```bash
+python scripts/train_baseline.py \
+  --sample-mode true \
+  --runtime databricks_serverless_cpu \
+  --log-mlflow \
+  --tracking-uri databricks
+```
+
+When a phase adds Spark, UC, or Delta operations, use the same IDE environment
+with `DATABRICKS_SERVERLESS_COMPUTE_ID=auto` to run the Databricks Connect code
+from the IDE before packaging it as a bundle job.
+
+Reserve these commands for the final packaging/integration test:
+
+```bash
+databricks bundle validate --profile <profile>
+databricks bundle deploy --profile <profile>
+databricks bundle run baseline_sample_cpu --profile <profile>
+```
+
+## Baseline Verification
+
+Phase 4 adds a sample-mode whole-image baseline entrypoint:
+
+```bash
+python scripts/train_baseline.py --sample-mode true --runtime local_cpu
+```
+
+This launches locally and does not require Databricks bundle validation,
+deployment, or a Databricks job. The bundle job is only for a later remote
+serverless CPU smoke run.
+
+The baseline uses public-safe synthetic whole-image feature vectors until open
+dataset ingest is implemented. It trains a small centroid scorer, chooses a
+recall-first threshold on the validation split, evaluates on the test split, and
+prints/logs the same metrics that later levers must use.
+
+To log the baseline to a local MLflow directory:
+
+```bash
+python scripts/train_baseline.py \
+  --sample-mode true \
+  --runtime local_cpu \
+  --log-mlflow \
+  --tracking-uri file:/tmp/cv-accuracy-levers-baseline-mlruns
+```
+
+For final packaged Databricks serverless CPU validation, use the bundle job
+after local and IDE-to-Databricks checks pass:
+
+```bash
+databricks bundle run baseline_sample_cpu --profile <profile>
+```
+
+Do not compare levers against the baseline unless both runs use the same split
+and threshold-selection logic.
+
+## AI Runtime CLI
+
+AI Runtime CLI support is deferred infrastructure for reproducible GPU
+submissions. The example contract in [`air/baseline_sample.yaml`](air/baseline_sample.yaml)
+calls `scripts/train_baseline.py` in `SAMPLE_MODE=true` with
+`CV_RUNTIME=ai_runtime_cli`. Validate that YAML against the installed `air` CLI
+schema before submitting it; AIR is not required for local or serverless CPU
+verification.
+
+## Progress
+
+Implementation progress is tracked in
+[`artifacts/progress.md`](artifacts/progress.md). Future agents should update
+that file whenever a phase is started, completed, blocked, or verified.

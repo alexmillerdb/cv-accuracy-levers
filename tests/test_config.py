@@ -15,6 +15,10 @@ def test_project_config_defaults(monkeypatch):
         "DATABRICKS_SERVERLESS_COMPUTE_ID",
         "CV_RUNTIME",
         "SAMPLE_MODE",
+        "CV_DATA_SOURCE",
+        "CV_DATA_MANIFEST",
+        "CV_DATA_DIR",
+        "CV_UC_TABLE",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -27,6 +31,10 @@ def test_project_config_defaults(monkeypatch):
     assert config.mlflow_registry_uri == "databricks-uc"
     assert config.runtime == "local_cpu"
     assert config.sample_mode is True
+    assert config.data_source == "manifest"
+    assert config.data_manifest is None
+    assert config.data_dir is None
+    assert config.data_uc_table == "image_manifest"
 
 
 def test_project_config_builds_uc_names(monkeypatch):
@@ -35,6 +43,10 @@ def test_project_config_builds_uc_names(monkeypatch):
     monkeypatch.setenv("CV_VOLUME", "images")
     monkeypatch.setenv("CV_VOLUME_SUBPATH", "cv-demo")
     monkeypatch.setenv("SAMPLE_MODE", "false")
+    monkeypatch.setenv("CV_DATA_SOURCE", "manifest")
+    monkeypatch.setenv("CV_DATA_MANIFEST", "data/input.jsonl")
+    monkeypatch.setenv("CV_DATA_DIR", "data/images")
+    monkeypatch.setenv("CV_UC_TABLE", "metadata")
 
     config = ProjectConfig.from_env(load_dotenv_file=False)
 
@@ -42,7 +54,14 @@ def test_project_config_builds_uc_names(monkeypatch):
     assert config.volume_uri("raw", "sample") == (
         "dbfs:/Volumes/dev/vision/images/cv-demo/raw/sample"
     )
+    assert config.volume_path("raw", "sample") == (
+        "/Volumes/dev/vision/images/cv-demo/raw/sample"
+    )
     assert config.sample_mode is False
+    assert config.data_source == "manifest"
+    assert config.data_manifest == "data/input.jsonl"
+    assert config.data_dir == "data/images"
+    assert config.data_uc_table == "metadata"
 
 
 def test_project_config_requires_mlflow_experiment(monkeypatch):

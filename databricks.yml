@@ -20,6 +20,15 @@ variables:
   experiment_id:
     description: Optional MLflow experiment ID. Prefer this when known.
     default: ""
+  data_manifest:
+    description: Databricks-accessible source manifest path for dataset ingest.
+    default: ""
+  data_dir:
+    description: Databricks-accessible image directory for dataset ingest.
+    default: ""
+  uc_table:
+    description: UC table name for normalized image manifest rows.
+    default: image_manifest
 
 resources:
   jobs:
@@ -76,6 +85,44 @@ resources:
               - ${var.experiment_id}
               - --experiment-name
               - ${var.experiment_name}
+    ingest_manifest_uc_cpu:
+      name: cv-accuracy-levers-ingest-manifest-uc-cpu
+      environments:
+        - environment_key: ingest_cpu_env
+          spec:
+            environment_version: "4"
+            dependencies:
+              - "numpy>=1.26"
+              - "python-dotenv>=1.0"
+      tasks:
+        - task_key: ingest_manifest_uc
+          environment_key: ingest_cpu_env
+          spark_python_task:
+            python_file: scripts/prepare_dataset.py
+            parameters:
+              - --source
+              - manifest
+              - --manifest-path
+              - ${var.data_manifest}
+              - --data-dir
+              - ${var.data_dir}
+              - --sample-mode
+              - "true"
+              - --runtime
+              - databricks_serverless_cpu
+              - --catalog
+              - ${var.catalog}
+              - --schema
+              - ${var.schema}
+              - --volume
+              - ${var.volume}
+              - --volume-subpath
+              - ${var.volume_subpath}
+              - --copy-images-to-uc-volume
+              - --write-uc
+              - --uc-table
+              - ${var.uc_table}
+              - --create-uc-objects
 
 targets:
   dev:

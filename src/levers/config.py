@@ -48,6 +48,10 @@ class ProjectConfig:
     databricks_serverless_compute_id: str | None
     runtime: str
     sample_mode: bool
+    data_source: str
+    data_manifest: str | None
+    data_dir: str | None
+    data_uc_table: str
 
     @classmethod
     def from_env(cls, *, load_dotenv_file: bool = True) -> "ProjectConfig":
@@ -70,6 +74,10 @@ class ProjectConfig:
             runtime=_required_env("CV_RUNTIME", "local_cpu"),
             sample_mode=_required_env("SAMPLE_MODE", "true").lower()
             in {"1", "true", "yes", "y"},
+            data_source=_required_env("CV_DATA_SOURCE", "manifest"),
+            data_manifest=_optional_env("CV_DATA_MANIFEST"),
+            data_dir=_optional_env("CV_DATA_DIR"),
+            data_uc_table=_required_env("CV_UC_TABLE", "image_manifest"),
         )
 
     def uc_table(self, table_name: str) -> str:
@@ -79,6 +87,12 @@ class ProjectConfig:
         normalized = [self.volume_subpath, *parts]
         tail = "/".join(part.strip("/") for part in normalized if part and part.strip("/"))
         base = f"dbfs:/Volumes/{self.catalog}/{self.schema}/{self.volume}"
+        return f"{base}/{tail}" if tail else base
+
+    def volume_path(self, *parts: str) -> str:
+        normalized = [self.volume_subpath, *parts]
+        tail = "/".join(part.strip("/") for part in normalized if part and part.strip("/"))
+        base = f"/Volumes/{self.catalog}/{self.schema}/{self.volume}"
         return f"{base}/{tail}" if tail else base
 
     def require_mlflow_experiment(self) -> None:

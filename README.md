@@ -43,6 +43,10 @@ CV_CATALOG=main
 CV_SCHEMA=cv_accuracy_levers
 CV_VOLUME=cv_accuracy_levers
 CV_VOLUME_SUBPATH=artifacts
+CV_DATA_SOURCE=manifest
+CV_DATA_MANIFEST=/path/to/public_manifest.jsonl
+CV_DATA_DIR=/path/to/public_images
+CV_UC_TABLE=image_manifest
 ```
 
 Prefer `MLFLOW_EXPERIMENT_ID` for IDE-to-Databricks logging. Use
@@ -125,6 +129,81 @@ databricks bundle validate --profile <profile>
 databricks bundle deploy --profile <profile>
 databricks bundle run baseline_sample_cpu --profile <profile>
 ```
+
+## Public Dataset Ingest
+
+Phase 4.5 adds a manifest-backed ingest path before real-data training. The
+default source is `manifest`, which keeps downloads, credentials, and image
+artifacts outside git while normalizing records into the project schema.
+
+Input manifests can be CSV, JSON, or JSONL and must include:
+
+- `image_path`
+- `label` or `class_name` or `category`
+- `group_id`
+- `source`
+- `source_license`
+
+The ingest path rejects non-commercial and unreviewed custom licenses by
+default. Use permissively licensed public data for the default Apache-2.0 demo
+path. Wood-specific non-commercial datasets can be documented as research-only
+external inputs, but should not become the default workflow.
+
+Run a local sample ingest:
+
+```bash
+python scripts/prepare_dataset.py \
+  --source manifest \
+  --manifest-path /path/to/public_manifest.jsonl \
+  --data-dir /path/to/public_images \
+  --output-path artifacts/ingest/normalized_manifest.jsonl \
+  --sample-mode true \
+  --sample-size 100 \
+  --runtime local_cpu
+```
+
+`artifacts/ingest/` and `data/` are ignored so generated manifests and images
+do not get staged accidentally. The optional `rf100vl` source is guarded by
+`ROBOFLOW_API_KEY`; direct download is deferred until the source and dataset
+selection are explicitly reviewed.
+
+To persist the normalized manifest to Unity Catalog and stage images under the
+configured UC volume, run from Databricks or an IDE session with Databricks
+Connect/serverless CPU configured:
+
+```bash
+python scripts/prepare_dataset.py \
+  --source manifest \
+  --manifest-path /path/to/public_manifest.jsonl \
+  --data-dir /path/to/public_images \
+  --sample-mode true \
+  --runtime databricks_serverless_cpu \
+  --catalog "$CV_CATALOG" \
+  --schema "$CV_SCHEMA" \
+  --volume "$CV_VOLUME" \
+  --volume-subpath "$CV_VOLUME_SUBPATH" \
+  --copy-images-to-uc-volume \
+  --uc-image-upload-mode sdk \
+  --databricks-profile "$DATABRICKS_CONFIG_PROFILE" \
+  --write-uc \
+  --uc-table image_manifest \
+  --create-uc-objects
+```
+
+`--create-uc-objects` attempts to create `CV_CATALOG`, `CV_SCHEMA`, and
+`CV_VOLUME`; omit it when those objects already exist or your user lacks create
+privileges. The UC table is written to `CV_CATALOG.CV_SCHEMA.<uc-table>`, and
+the normalized manifest is also written under `CV_VOLUME_SUBPATH/ingest/` in
+the configured volume.
+
+Use `--uc-image-upload-mode sdk` from an IDE or local terminal. Use the default
+`local` mode only when the script runs inside Databricks where `/Volumes/...`
+is mounted.
+
+The bundle also includes `ingest_manifest_uc_cpu` as a final packaged
+serverless CPU path. Set the `data_manifest`, `data_dir`, and `uc_table` bundle
+variables before running it; the manifest and image directory must be
+Databricks-accessible.
 
 ## Baseline Verification
 

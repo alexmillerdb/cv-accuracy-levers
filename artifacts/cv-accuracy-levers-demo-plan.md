@@ -78,6 +78,10 @@ CV_CATALOG=main
 CV_SCHEMA=cv_accuracy_levers
 CV_VOLUME=cv_accuracy_levers
 CV_VOLUME_SUBPATH=artifacts
+CV_DATA_SOURCE=manifest
+CV_DATA_MANIFEST=
+CV_DATA_DIR=
+CV_UC_TABLE=image_manifest
 CV_RUNTIME=local_cpu
 SAMPLE_MODE=true
 ```
@@ -85,7 +89,7 @@ SAMPLE_MODE=true
 Prefer `MLFLOW_EXPERIMENT_ID` for stable IDE logging. Use
 `MLFLOW_EXPERIMENT_NAME` only when the experiment ID is not known. Code should
 load settings via `levers.config.ProjectConfig` and must not hardcode workspace
-paths, catalog/schema/volume names, or compute IDs.
+paths, catalog/schema/volume names, compute IDs, or dataset locations.
 
 ## Phases
 
@@ -128,10 +132,19 @@ Required settings:
 
 ### Phase 4 - Notebook Baseline
 
-Implement dataset ingest and a baseline whole-image classifier in sample mode
-first. Full-dataset mode stays behind explicit parameters. The sample baseline
-must launch directly from the IDE before any bundle job is used as a final
-packaging check.
+Implement a baseline whole-image classifier in sample mode first. Full-dataset
+mode stays behind explicit parameters. The sample baseline must launch directly
+from the IDE before any bundle job is used as a final packaging check.
+
+### Phase 4.5 - Public Dataset Ingest
+
+Add a license-first manifest ingest path before real-data training and Phase 5
+levers. The default source is `manifest`; optional RF100-VL or other external
+source adapters must remain env-driven and must not commit images, archives, or
+credentials. Reject non-commercial and unreviewed custom licenses by default.
+The ingest script can optionally copy referenced images into the configured UC
+volume, write the normalized manifest under that volume, and register the
+manifest as a Delta table in `CV_CATALOG.CV_SCHEMA`.
 
 ### Phase 5 - Accuracy Levers
 
@@ -162,6 +175,12 @@ Dataset records use these fields:
 - optional `defect_types`
 - optional `bbox`
 - optional `comment_category`
+
+Normalized ingest rows must also retain:
+
+- `source`
+- `source_license`
+- `original_label`
 
 MLflow metrics should include:
 

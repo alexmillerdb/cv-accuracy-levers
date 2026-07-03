@@ -12,6 +12,7 @@ verified. Keep entries short and include exact verification commands.
 | 2 - Tiny local sample | Complete | `PYTHONPATH=src python scripts/run_tiny_sample.py`; `PYTHONPATH=src python scripts/run_tiny_sample.py --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-mlruns` | CPU-only deterministic sample path prints metrics and logs to local MLflow. |
 | 3 - Serverless CPU Databricks smoke | Complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/run_tiny_sample.py --runtime databricks_serverless_cpu`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle deploy --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle run smoke_sample_cpu --profile fevm` | Serverless CPU smoke job completed successfully and logged MLflow metrics. |
 | 4 - Notebook baseline | Local complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/train_baseline.py --sample-mode true --runtime local_cpu`; `python scripts/train_baseline.py --sample-mode true --runtime local_cpu --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-baseline-mlruns` | Sample-mode baseline launches locally without bundle deployment. Serverless CPU bundle job is added but not required for local verification. |
+| 4.5 - Public dataset ingest | Complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/prepare_dataset.py --source manifest --manifest-path /tmp/cv-accuracy-levers-ingest-smoke/manifest.jsonl --data-dir /tmp/cv-accuracy-levers-ingest-smoke/images --output-path /tmp/cv-accuracy-levers-ingest-smoke/normalized_manifest_uc_copy.jsonl --sample-mode true --sample-size 3 --runtime local_cpu --catalog demo_catalog --schema demo_schema --volume demo_volume --volume-subpath cv --copy-images-to-uc-volume --uc-image-dir /tmp/cv-accuracy-levers-ingest-smoke/uc-volume/images`; `python -c "import yaml; yaml.safe_load(open('databricks.yml')); print('databricks_yml_ok')"`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm` | Added license-first manifest ingest plus optional UC table/volume persistence before Phase 5 levers. |
 | 5 - Accuracy levers | Not started | Pending | One lever at a time. |
 | 6 - GPU execution | Not started | Pending | AI Runtime notebook or MLR GPU first. |
 
@@ -82,3 +83,40 @@ verified. Keep entries short and include exact verification commands.
   wording with
   `rg -n "IDE-to-Databricks|bundle validation|final packaging|DATABRICKS_SERVERLESS_COMPUTE_ID=auto|Verification Ladder|databricks bundle" AGENTS.md README.md artifacts/cv-accuracy-levers-demo-plan.md artifacts/progress.md`
   and confirmed code still compiles with `python -m compileall src tests scripts`.
+- 2026-07-03: Started Phase 4.5 public dataset ingest foundation. Building a
+  license-first manifest path before Phase 5 threshold tuning so later training
+  can run on real public data instead of only synthetic sample features.
+- 2026-07-03: Completed Phase 4.5 public dataset ingest foundation. Added
+  manifest normalization helpers, `scripts/prepare_dataset.py`, a thin
+  `00_setup_and_ingest.py` wrapper, dataset env defaults, docs, and tests.
+  Verified with `python -m compileall src tests scripts`, `pytest` with 30
+  tests passing, and
+  `python scripts/prepare_dataset.py --source manifest --manifest-path /tmp/cv-accuracy-levers-ingest-smoke/manifest.jsonl --data-dir /tmp/cv-accuracy-levers-ingest-smoke/images --output-path /tmp/cv-accuracy-levers-ingest-smoke/normalized_manifest.jsonl --sample-mode true --sample-size 3 --runtime local_cpu`.
+- 2026-07-03: Started Phase 4.5 UC ingest extension. Adding optional Unity
+  Catalog persistence so normalized manifests can be written to
+  `CV_CATALOG.CV_SCHEMA` and files can be staged under `CV_VOLUME`.
+- 2026-07-03: Completed Phase 4.5 UC ingest extension. Added UC volume path
+  helpers, image-copy staging into a volume path, optional Spark persistence to
+  a UC Delta table and volume manifest directory, notebook widgets, README
+  guidance, and an optional `ingest_manifest_uc_cpu` bundle job. Verified with
+  `python -m compileall src tests scripts`, `pytest` with 34 tests passing,
+  local image-copy smoke via `scripts/prepare_dataset.py`, and YAML parsing for
+  `databricks.yml`. Initial bundle validation was blocked by sandbox DNS, then
+  passed with network access using
+  `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm`.
+  Live UC execution still needs a Databricks-accessible manifest/image directory
+  and profile-authenticated compute.
+- 2026-07-03: Ran live UC ingest against
+  `serverless_stable_yau46e_catalog.cv_accuracy_levers`. Created schema
+  `cv_accuracy_levers` and managed volume `cv_accuracy_levers` in the existing
+  catalog, then ran
+  `scripts/prepare_dataset.py` with `DATABRICKS_CONFIG_PROFILE=fevm`,
+  `DATABRICKS_SERVERLESS_COMPUTE_ID=auto`,
+  `--uc-image-upload-mode sdk`, `--write-uc`, and `--uc-table image_manifest`.
+  Wrote image files under
+  `/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/images`,
+  wrote manifest JSON to
+  `dbfs:/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/image_manifest`,
+  and verified Delta table
+  `serverless_stable_yau46e_catalog.cv_accuracy_levers.image_manifest` contains
+  3 rows.

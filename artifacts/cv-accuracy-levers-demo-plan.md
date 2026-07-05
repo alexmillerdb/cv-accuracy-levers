@@ -200,6 +200,30 @@ volume params, min recall, split/feature seeds, selected threshold, review
 threshold, review metrics, ranked false-negative rows, a review summary, and a
 leaderboard row artifact.
 
+#### Phase 5.3 - Label-QA Embeddings
+
+Use deterministic synthetic feature embeddings from the existing sample
+baseline path to produce label-quality review artifacts. This phase is
+analysis-only: do not add CLIP, Torch, crop-first logic, full-dataset image
+embedding extraction, new classifier training, or GPU execution.
+
+Public interface:
+
+```bash
+python scripts/review_label_quality_embeddings.py --sample-mode true --runtime local_cpu
+python scripts/review_label_quality_embeddings.py --sample-mode true --runtime local_cpu --inject-synthetic-label-issue --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-label-quality-mlruns
+```
+
+The run must log `lever_name=label_quality_embeddings`, sample/runtime/catalog/
+schema/volume params, min recall, split/feature seeds, selected threshold,
+`embedding_source=sample_baseline_synthetic_features_v1`, similarity thresholds,
+neighbor count, review top-k, synthetic issue injection flag, review metrics,
+`label_quality_review_rows.json`, `label_quality_summary.json`,
+`embedding_neighbors.json`, `leaderboard_row.json`, and `predictions.json`.
+Treat all rows as review candidates only; synthetic injection exists only to
+exercise non-empty artifact paths and must not be presented as a real dataset
+defect.
+
 ### Phase 6 - GPU Execution
 
 Validate one GPU run through AI Runtime notebooks or an MLR GPU cluster. Add AI

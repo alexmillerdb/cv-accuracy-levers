@@ -343,6 +343,64 @@ after local and IDE-to-Databricks checks pass:
 databricks bundle run false_negative_review_sample_cpu --profile <profile>
 ```
 
+## Label-Quality Embeddings Verification
+
+Phase 5.3 adds a sample-mode label-quality review over deterministic synthetic
+feature embeddings from the baseline sample path:
+
+```bash
+python scripts/review_label_quality_embeddings.py --sample-mode true --runtime local_cpu
+```
+
+This is an analysis artifact, not a model-improvement claim. It surfaces
+suspected label conflicts, cross-split near-duplicate candidates, and
+model/label mismatches for human review. The embedding source is logged as
+`sample_baseline_synthetic_features_v1`; these are CPU smoke-test features, not
+real image embeddings.
+
+To exercise non-empty artifact paths deterministically, inject a clearly marked
+synthetic label issue:
+
+```bash
+python scripts/review_label_quality_embeddings.py \
+  --sample-mode true \
+  --runtime local_cpu \
+  --inject-synthetic-label-issue
+```
+
+To log the label-quality review run to a local MLflow directory:
+
+```bash
+python scripts/review_label_quality_embeddings.py \
+  --sample-mode true \
+  --runtime local_cpu \
+  --inject-synthetic-label-issue \
+  --log-mlflow \
+  --tracking-uri file:/tmp/cv-accuracy-levers-label-quality-mlruns
+```
+
+The MLflow run logs review metrics, `label_quality_review_rows.json`,
+`label_quality_summary.json`, `embedding_neighbors.json`,
+`leaderboard_row.json`, and `predictions.json`.
+
+For IDE-to-Databricks MLflow smoke verification:
+
+```bash
+python scripts/review_label_quality_embeddings.py \
+  --sample-mode true \
+  --runtime databricks_serverless_cpu \
+  --inject-synthetic-label-issue \
+  --log-mlflow \
+  --tracking-uri databricks
+```
+
+For final packaged Databricks serverless CPU validation, use the bundle job
+after local and IDE-to-Databricks checks pass:
+
+```bash
+databricks bundle run label_quality_embeddings_sample_cpu --profile <profile>
+```
+
 ## AI Runtime CLI
 
 AI Runtime CLI support is deferred infrastructure for reproducible GPU

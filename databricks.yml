@@ -143,6 +143,35 @@ resources:
               - ${var.experiment_id}
               - --experiment-name
               - ${var.experiment_name}
+    label_quality_embeddings_sample_cpu:
+      name: cv-accuracy-levers-label-quality-embeddings-sample-cpu
+      environments:
+        - environment_key: label_quality_embeddings_cpu_env
+          spec:
+            environment_version: "4"
+            dependencies:
+              - "mlflow[databricks]>=3.1"
+              - "numpy>=1.26"
+              - "python-dotenv>=1.0"
+              - "scikit-learn>=1.4"
+      tasks:
+        - task_key: label_quality_embeddings_sample
+          environment_key: label_quality_embeddings_cpu_env
+          spark_python_task:
+            python_file: scripts/review_label_quality_embeddings.py
+            parameters:
+              - --runtime
+              - databricks_serverless_cpu
+              - --sample-mode
+              - "true"
+              - --inject-synthetic-label-issue
+              - --log-mlflow
+              - --tracking-uri
+              - databricks
+              - --experiment-id
+              - ${var.experiment_id}
+              - --experiment-name
+              - ${var.experiment_name}
     ingest_manifest_uc_cpu:
       name: cv-accuracy-levers-ingest-manifest-uc-cpu
       environments:

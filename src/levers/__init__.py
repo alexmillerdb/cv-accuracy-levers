@@ -17,6 +17,14 @@ from levers.ingest import (
     normalize_manifest_rows,
     persist_ingest_to_uc,
 )
+from levers.label_quality import (
+    EmbeddingRow,
+    LabelQualityIssueRow,
+    LabelQualityResult,
+    build_sample_embedding_rows,
+    find_label_quality_issues,
+    run_sample_label_quality_embeddings,
+)
 from levers.thresholds import ThresholdPoint, threshold_sweep
 from levers.threshold_tuning import (
     ThresholdTuningResult,
@@ -27,21 +35,27 @@ from levers.threshold_tuning import (
 __all__ = [
     "BinaryMetrics",
     "DatasetRecord",
+    "EmbeddingRow",
     "FalseNegativeReviewResult",
     "FalseNegativeReviewRow",
     "IngestResult",
     "IngestedRecord",
+    "LabelQualityIssueRow",
+    "LabelQualityResult",
     "ProjectConfig",
     "ThresholdPoint",
     "ThresholdTuningResult",
     "binary_classification_metrics",
     "build_false_negative_review_rows",
+    "build_sample_embedding_rows",
     "copy_images_to_uc_volume",
+    "find_label_quality_issues",
     "make_grouped_split",
     "normalize_manifest_rows",
     "persist_ingest_to_uc",
     "review_false_negatives_from_predictions",
     "run_sample_false_negative_review",
+    "run_sample_label_quality_embeddings",
     "run_sample_threshold_tuning",
     "threshold_sweep",
     "tune_threshold_from_predictions",

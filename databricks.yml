@@ -85,6 +85,34 @@ resources:
               - ${var.experiment_id}
               - --experiment-name
               - ${var.experiment_name}
+    threshold_tuning_sample_cpu:
+      name: cv-accuracy-levers-threshold-tuning-sample-cpu
+      environments:
+        - environment_key: threshold_tuning_cpu_env
+          spec:
+            environment_version: "4"
+            dependencies:
+              - "mlflow[databricks]>=3.1"
+              - "numpy>=1.26"
+              - "python-dotenv>=1.0"
+              - "scikit-learn>=1.4"
+      tasks:
+        - task_key: threshold_tuning_sample
+          environment_key: threshold_tuning_cpu_env
+          spark_python_task:
+            python_file: scripts/tune_threshold.py
+            parameters:
+              - --runtime
+              - databricks_serverless_cpu
+              - --sample-mode
+              - "true"
+              - --log-mlflow
+              - --tracking-uri
+              - databricks
+              - --experiment-id
+              - ${var.experiment_id}
+              - --experiment-name
+              - ${var.experiment_name}
     ingest_manifest_uc_cpu:
       name: cv-accuracy-levers-ingest-manifest-uc-cpu
       environments:

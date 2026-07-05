@@ -11,6 +11,11 @@ from levers.ingest import (
     persist_ingest_to_uc,
 )
 from levers.thresholds import ThresholdPoint, threshold_sweep
+from levers.threshold_tuning import (
+    ThresholdTuningResult,
+    run_sample_threshold_tuning,
+    tune_threshold_from_predictions,
+)
 
 __all__ = [
     "BinaryMetrics",
@@ -19,11 +24,14 @@ __all__ = [
     "IngestedRecord",
     "ProjectConfig",
     "ThresholdPoint",
+    "ThresholdTuningResult",
     "binary_classification_metrics",
     "copy_images_to_uc_volume",
     "make_grouped_split",
     "normalize_manifest_rows",
     "persist_ingest_to_uc",
+    "run_sample_threshold_tuning",
     "threshold_sweep",
+    "tune_threshold_from_predictions",
     "validate_group_splits",
 ]

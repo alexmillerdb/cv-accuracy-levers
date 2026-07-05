@@ -159,6 +159,25 @@ Add one lever at a time:
 Each lever must produce one notebook/script run, one MLflow run, and one
 leaderboard row.
 
+#### Phase 5.1 - Threshold Tuning
+
+Use the existing sample baseline prediction scores to measure threshold tuning
+as an operating-point lever. Do not add a new classifier, full-dataset training,
+or GPU execution in this phase.
+
+Public interface:
+
+```bash
+python scripts/tune_threshold.py --sample-mode true --runtime local_cpu
+python scripts/tune_threshold.py --sample-mode true --runtime local_cpu --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-threshold-mlruns
+```
+
+The run must log `lever_name=threshold_tuning`, sample/runtime/catalog/schema/
+volume params, min recall, split/feature seeds, baseline threshold, tuned test
+metrics, validation metrics, fixed-0.5 metrics, tuned-minus-fixed deltas, and a
+threshold sweep artifact. The comparison claim is limited to changing recall
+and precision on the same split, not improving the underlying model.
+
 ### Phase 6 - GPU Execution
 
 Validate one GPU run through AI Runtime notebooks or an MLR GPU cluster. Add AI

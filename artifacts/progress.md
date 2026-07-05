@@ -13,7 +13,7 @@ verified. Keep entries short and include exact verification commands.
 | 3 - Serverless CPU Databricks smoke | Complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/run_tiny_sample.py --runtime databricks_serverless_cpu`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle deploy --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle run smoke_sample_cpu --profile fevm` | Serverless CPU smoke job completed successfully and logged MLflow metrics. |
 | 4 - Notebook baseline | Local complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/train_baseline.py --sample-mode true --runtime local_cpu`; `python scripts/train_baseline.py --sample-mode true --runtime local_cpu --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-baseline-mlruns` | Sample-mode baseline launches locally without bundle deployment. Serverless CPU bundle job is added but not required for local verification. |
 | 4.5 - Public dataset ingest | Complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/prepare_dataset.py --source manifest --manifest-path /tmp/cv-accuracy-levers-ingest-smoke/manifest.jsonl --data-dir /tmp/cv-accuracy-levers-ingest-smoke/images --output-path /tmp/cv-accuracy-levers-ingest-smoke/normalized_manifest_uc_copy.jsonl --sample-mode true --sample-size 3 --runtime local_cpu --catalog demo_catalog --schema demo_schema --volume demo_volume --volume-subpath cv --copy-images-to-uc-volume --uc-image-dir /tmp/cv-accuracy-levers-ingest-smoke/uc-volume/images`; `python -c "import yaml; yaml.safe_load(open('databricks.yml')); print('databricks_yml_ok')"`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm` | Added license-first manifest ingest plus optional UC table/volume persistence before Phase 5 levers. |
-| 5 - Accuracy levers | Not started | Pending | One lever at a time. |
+| 5 - Accuracy levers | In progress | `python -m compileall src tests scripts`; `pytest`; `python scripts/tune_threshold.py --sample-mode true --runtime local_cpu`; `python scripts/tune_threshold.py --sample-mode true --runtime local_cpu --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-threshold-mlruns`; `python scripts/tune_threshold.py --sample-mode true --runtime databricks_serverless_cpu --log-mlflow --tracking-uri databricks --experiment-name /Shared/cv-accuracy-levers`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle deploy --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle run threshold_tuning_sample_cpu --profile fevm` | Phase 5.1 threshold tuning lever complete; remaining Phase 5 levers not started. |
 | 6 - GPU execution | Not started | Pending | AI Runtime notebook or MLR GPU first. |
 
 ## Log
@@ -120,3 +120,21 @@ verified. Keep entries short and include exact verification commands.
   and verified Delta table
   `serverless_stable_yau46e_catalog.cv_accuracy_levers.image_manifest` contains
   3 rows.
+- 2026-07-03: Started Phase 5.1 threshold tuning lever. Scope is a sample-mode
+  threshold sweep over existing baseline predictions, fixed-0.5 comparison, and
+  MLflow logging; no new classifier, full-dataset training, or GPU work.
+- 2026-07-05: Resumed after crash and completed Phase 5.1 threshold tuning
+  verification. Verified local shared-code gate with
+  `python -m compileall src tests scripts` and `pytest` with 40 tests passing.
+  Verified local script and MLflow paths with
+  `python scripts/tune_threshold.py --sample-mode true --runtime local_cpu` and
+  `python scripts/tune_threshold.py --sample-mode true --runtime local_cpu --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-threshold-mlruns`.
+  Initial Databricks MLflow smoke failed without an experiment target, as
+  expected for Databricks tracking; reran with
+  `python scripts/tune_threshold.py --sample-mode true --runtime databricks_serverless_cpu --log-mlflow --tracking-uri databricks --experiment-name /Shared/cv-accuracy-levers`.
+  The sandboxed Databricks attempt hit DNS resolution for the workspace host;
+  the approved network rerun succeeded and logged an MLflow run. Final packaging
+  passed with `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm`,
+  `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle deploy --profile fevm`,
+  and `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle run threshold_tuning_sample_cpu --profile fevm`;
+  the packaged serverless CPU job terminated `SUCCESS`.

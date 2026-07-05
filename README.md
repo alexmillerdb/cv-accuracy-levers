@@ -69,7 +69,7 @@ The notebook and script flow is intentionally phased:
 ## Local Verification
 
 ```bash
-python -m compileall src tests
+python -m compileall src tests scripts
 pytest
 ```
 
@@ -241,6 +241,52 @@ databricks bundle run baseline_sample_cpu --profile <profile>
 
 Do not compare levers against the baseline unless both runs use the same split
 and threshold-selection logic.
+
+## Threshold Tuning Verification
+
+Phase 5.1 adds a sample-mode threshold tuning lever over the existing baseline
+prediction scores:
+
+```bash
+python scripts/tune_threshold.py --sample-mode true --runtime local_cpu
+```
+
+This run selects a validation threshold that satisfies the configured recall
+floor, evaluates that selected threshold on the test split, and compares it
+against a fixed `0.5` operating point on the same test predictions. Treat the
+result as a recall/precision operating-point comparison, not as evidence that
+the underlying classifier improved.
+
+To log the threshold tuning run to a local MLflow directory:
+
+```bash
+python scripts/tune_threshold.py \
+  --sample-mode true \
+  --runtime local_cpu \
+  --log-mlflow \
+  --tracking-uri file:/tmp/cv-accuracy-levers-threshold-mlruns
+```
+
+The MLflow run logs tuned test metrics, validation metrics, fixed-0.5 test
+metrics, tuned-minus-fixed deltas, `threshold_sweep.json`,
+`threshold_tuning_summary.json`, and the baseline prediction rows.
+
+For IDE-to-Databricks MLflow smoke verification:
+
+```bash
+python scripts/tune_threshold.py \
+  --sample-mode true \
+  --runtime databricks_serverless_cpu \
+  --log-mlflow \
+  --tracking-uri databricks
+```
+
+For final packaged Databricks serverless CPU validation, use the bundle job
+after local and IDE-to-Databricks checks pass:
+
+```bash
+databricks bundle run threshold_tuning_sample_cpu --profile <profile>
+```
 
 ## AI Runtime CLI
 

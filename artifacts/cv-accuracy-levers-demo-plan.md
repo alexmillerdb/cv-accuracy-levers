@@ -178,6 +178,28 @@ metrics, validation metrics, fixed-0.5 metrics, tuned-minus-fixed deltas, and a
 threshold sweep artifact. The comparison claim is limited to changing recall
 and precision on the same split, not improving the underlying model.
 
+#### Phase 5.2 - False-Negative Review Grid
+
+Use the existing sample baseline prediction scores and selected threshold to
+produce a ranked false-negative review artifact. Do not add embeddings, crop
+logic, visual model changes, full-dataset training, or GPU execution in this
+phase.
+
+Public interface:
+
+```bash
+python scripts/review_false_negatives.py --sample-mode true --runtime local_cpu
+python scripts/review_false_negatives.py --sample-mode true --runtime local_cpu --review-threshold 0.95 --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-error-review-mlruns
+```
+
+The default review threshold is the validation-selected threshold. The sample
+data may have no false negatives at that threshold; use `--review-threshold`
+only to exercise non-empty review artifacts in deterministic smoke tests. The
+run must log `lever_name=false_negative_review`, sample/runtime/catalog/schema/
+volume params, min recall, split/feature seeds, selected threshold, review
+threshold, review metrics, ranked false-negative rows, a review summary, and a
+leaderboard row artifact.
+
 ### Phase 6 - GPU Execution
 
 Validate one GPU run through AI Runtime notebooks or an MLR GPU cluster. Add AI

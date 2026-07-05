@@ -288,6 +288,61 @@ after local and IDE-to-Databricks checks pass:
 databricks bundle run threshold_tuning_sample_cpu --profile <profile>
 ```
 
+## False-Negative Review Verification
+
+Phase 5.2 adds a sample-mode false-negative review grid over the existing
+baseline prediction scores:
+
+```bash
+python scripts/review_false_negatives.py --sample-mode true --runtime local_cpu
+```
+
+By default, the review threshold is the validation-selected threshold from the
+threshold tuning path. The synthetic sample can be perfectly separated at that
+threshold, so the default review grid may be empty. To exercise the review-row
+artifact path in a deterministic smoke run, pass an explicit review threshold:
+
+```bash
+python scripts/review_false_negatives.py \
+  --sample-mode true \
+  --runtime local_cpu \
+  --review-threshold 0.95
+```
+
+To log the false-negative review run to a local MLflow directory:
+
+```bash
+python scripts/review_false_negatives.py \
+  --sample-mode true \
+  --runtime local_cpu \
+  --review-threshold 0.95 \
+  --log-mlflow \
+  --tracking-uri file:/tmp/cv-accuracy-levers-error-review-mlruns
+```
+
+The MLflow run logs review metrics, `false_negative_review_rows.json`,
+`false_negative_review_summary.json`, `leaderboard_row.json`, and the baseline
+prediction rows. Treat the review buckets as triage metadata for human
+inspection, not as visual-cause labels.
+
+For IDE-to-Databricks MLflow smoke verification:
+
+```bash
+python scripts/review_false_negatives.py \
+  --sample-mode true \
+  --runtime databricks_serverless_cpu \
+  --review-threshold 0.95 \
+  --log-mlflow \
+  --tracking-uri databricks
+```
+
+For final packaged Databricks serverless CPU validation, use the bundle job
+after local and IDE-to-Databricks checks pass:
+
+```bash
+databricks bundle run false_negative_review_sample_cpu --profile <profile>
+```
+
 ## AI Runtime CLI
 
 AI Runtime CLI support is deferred infrastructure for reproducible GPU

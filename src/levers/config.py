@@ -59,7 +59,7 @@ class ProjectConfig:
             load_project_env()
 
         return cls(
-            catalog=_required_env("CV_CATALOG", "main"),
+            catalog=_required_env("CV_CATALOG", "serverless_stable_yau46e_catalog"),
             schema=_required_env("CV_SCHEMA", "cv_accuracy_levers"),
             volume=_required_env("CV_VOLUME", "cv_accuracy_levers"),
             volume_subpath=_required_env("CV_VOLUME_SUBPATH", "artifacts"),

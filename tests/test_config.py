@@ -24,7 +24,7 @@ def test_project_config_defaults(monkeypatch):
 
     config = ProjectConfig.from_env(load_dotenv_file=False)
 
-    assert config.catalog == "main"
+    assert config.catalog == "serverless_stable_yau46e_catalog"
     assert config.schema == "cv_accuracy_levers"
     assert config.volume == "cv_accuracy_levers"
     assert config.mlflow_tracking_uri == "databricks"

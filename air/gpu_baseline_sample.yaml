@@ -1,0 +1,53 @@
+# AI Runtime CLI GPU sample for the manifest-backed image baseline.
+# Validate with `air run --file air/gpu_baseline_sample.yaml --dry-run -p <profile>`.
+
+experiment_name: cv-accuracy-levers-gpu-baseline-sample
+
+environment:
+  version: "4"
+  dependencies:
+    - mlflow[databricks]>=3.1
+    - numpy>=1.26
+    - pandas>=2.0
+    - python-dotenv>=1.0
+    - scikit-learn>=1.4
+    - torch>=2.3
+    - torchvision>=0.18
+    - Pillow>=10.0
+
+env_variables:
+  CV_RUNTIME: ai_runtime_cli_gpu
+  SAMPLE_MODE: "true"
+  MLFLOW_TRACKING_URI: databricks
+  MLFLOW_REGISTRY_URI: databricks-uc
+  MLFLOW_EXPERIMENT_ID: ""
+  MLFLOW_EXPERIMENT_NAME: cv-accuracy-levers-gpu-baseline-sample
+  CV_CATALOG: serverless_stable_yau46e_catalog
+  CV_SCHEMA: cv_accuracy_levers
+  CV_VOLUME: cv_accuracy_levers
+  CV_VOLUME_SUBPATH: artifacts
+  CV_DATA_SOURCE: manifest
+  CV_DATA_MANIFEST: ""
+  CV_DATA_DIR: ""
+
+compute:
+  num_accelerators: 1
+  accelerator_type: GPU_1xA10
+
+code_source:
+  type: snapshot
+  snapshot:
+    root_path: ..
+
+command: >-
+  python $CODE_SOURCE_PATH/scripts/train_gpu_baseline.py
+  --sample-mode true
+  --runtime ai_runtime_cli_gpu
+  --sample-size 32
+  --epochs 1
+  --batch-size 8
+  --image-size 160
+  --device auto
+  --backbone tiny_cnn
+  --log-mlflow
+  --tracking-uri databricks

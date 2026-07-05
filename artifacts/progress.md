@@ -14,7 +14,7 @@ verified. Keep entries short and include exact verification commands.
 | 4 - Notebook baseline | Local complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/train_baseline.py --sample-mode true --runtime local_cpu`; `python scripts/train_baseline.py --sample-mode true --runtime local_cpu --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-baseline-mlruns` | Sample-mode baseline launches locally without bundle deployment. Serverless CPU bundle job is added but not required for local verification. |
 | 4.5 - Public dataset ingest | Complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/prepare_dataset.py --source manifest --manifest-path /tmp/cv-accuracy-levers-ingest-smoke/manifest.jsonl --data-dir /tmp/cv-accuracy-levers-ingest-smoke/images --output-path /tmp/cv-accuracy-levers-ingest-smoke/normalized_manifest_uc_copy.jsonl --sample-mode true --sample-size 3 --runtime local_cpu --catalog demo_catalog --schema demo_schema --volume demo_volume --volume-subpath cv --copy-images-to-uc-volume --uc-image-dir /tmp/cv-accuracy-levers-ingest-smoke/uc-volume/images`; `python -c "import yaml; yaml.safe_load(open('databricks.yml')); print('databricks_yml_ok')"`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm` | Added license-first manifest ingest plus optional UC table/volume persistence before Phase 5 levers. |
 | 5 - Accuracy levers | In progress | `python -m compileall src tests scripts`; `pytest`; `python scripts/tune_threshold.py --sample-mode true --runtime local_cpu`; `python scripts/review_false_negatives.py --sample-mode true --runtime local_cpu --review-threshold 0.95`; `python scripts/review_label_quality_embeddings.py --sample-mode true --runtime local_cpu --inject-synthetic-label-issue`; `python scripts/run_crop_first_ab.py --sample-mode true --runtime local_cpu`; `python scripts/run_crop_first_ab.py --sample-mode true --runtime databricks_serverless_cpu --log-mlflow --tracking-uri databricks --experiment-name /Shared/cv-accuracy-levers`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle deploy --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle run crop_first_ab_sample_cpu --profile fevm` | Phase 5.1 threshold tuning, Phase 5.2 false-negative review, Phase 5.3 label-quality embeddings, and Phase 5.4 crop-first A/B complete; transfer-backbone not started. |
-| 6 - GPU execution | Not started | Pending | AI Runtime notebook or MLR GPU first. |
+| 6 - GPU execution | In progress | `python -m compileall src tests scripts`; `pytest`; `python scripts/train_gpu_baseline.py --manifest-path /tmp/cv-accuracy-levers-gpu-smoke/manifest.jsonl --data-dir /tmp/cv-accuracy-levers-gpu-smoke --sample-mode true --sample-size 6 --runtime local_cpu --device cpu --image-size 24 --batch-size 2 --epochs 1`; `python -c "import yaml; yaml.safe_load(open('databricks.yml')); yaml.safe_load(open('air/gpu_baseline_sample.yaml')); yaml.safe_load(open('air/baseline_sample.yaml')); print('yaml_ok')"`; `air --version`; `air run --file air/gpu_baseline_sample.yaml --dry-run -p fevm --json` | AIR CLI-first GPU path scaffolded and dry-run validated with `GPU_1xA10`; local CPU Torch smoke passed; real GPU submit is pending Databricks-accessible `CV_DATA_MANIFEST`/`CV_DATA_DIR` and explicit approval. Default catalog is `serverless_stable_yau46e_catalog`. |
 
 ## Log
 
@@ -239,3 +239,43 @@ verified. Keep entries short and include exact verification commands.
   experiment `1619757321015524` with runtime `databricks_serverless_cpu`,
   catalog `main`, schema `cv_accuracy_levers`, volume `cv_accuracy_levers`,
   and volume subpath `artifacts`.
+- 2026-07-05: Started Phase 6 AIR CLI-first GPU execution path after Phase 5.4
+  completion was recorded. Added `src/levers/gpu_baseline.py`,
+  `scripts/train_gpu_baseline.py`, `air/gpu_baseline_sample.yaml`, optional
+  `gpu` dependencies, tests, and docs. The new path is manifest-backed and
+  keeps `scripts/train_baseline.py` as the synthetic centroid CPU control.
+  Locally verified with `python -m compileall src tests scripts`, `pytest`
+  with 74 passed and 1 skipped, and
+  `python -c "import yaml; yaml.safe_load(open('air/gpu_baseline_sample.yaml')); yaml.safe_load(open('air/baseline_sample.yaml')); print('air_yaml_ok')"`.
+  The skipped test is the local CPU Torch/Torchvision smoke because those
+  optional packages are not installed locally.
+- 2026-07-05: Installed AIR CLI with
+  `uv tool install --force databricks-air --python 3.12` and verified
+  `air --version` reported Databricks AI Runtime CLI v0.1.0. Initial
+  `air run --file air/gpu_baseline_sample.yaml --dry-run -p fevm` found that
+  AIR v0.1.0 expects top-level `env_variables`, not nested
+  `environment.env_variables`. After fixing the schema and changing
+  `code_source.snapshot.root_path` to `..`, approved-network dry-run
+  `air run --file air/gpu_baseline_sample.yaml --dry-run -p fevm --json`
+  returned `DRY_RUN_OK` and packaged the repo root rather than only `air/`.
+- 2026-07-05: Changed the default catalog for Phase 6 and repo defaults to
+  `serverless_stable_yau46e_catalog` in `ProjectConfig`, `.env.example`,
+  `databricks.yml`, AIR YAML, README, and persisted plan docs. Re-verified with
+  `python -m compileall src tests scripts`, `pytest` with 74 passed and 1
+  skipped, YAML parsing for `databricks.yml`, `air/gpu_baseline_sample.yaml`,
+  and `air/baseline_sample.yaml`, and approved-network
+  `air run --file air/gpu_baseline_sample.yaml --dry-run -p fevm --json`.
+  The AIR dry-run returned `DRY_RUN_OK`; the generated payload showed
+  `CV_CATALOG=serverless_stable_yau46e_catalog`, `GPU_1xA10`, repo-root
+  snapshot packaging, and blank `CV_DATA_MANIFEST`/`CV_DATA_DIR`. Real
+  `--watch` submission is pending Databricks-accessible manifest/image paths
+  plus explicit approval because it starts GPU compute.
+- 2026-07-05: Installed optional local GPU dependencies with
+  `uv pip install -e '.[gpu]'`, which installed Torch `2.12.1` and Torchvision
+  `0.27.1` into the project `.venv`. The shell `pytest` executable still uses
+  the Miniconda interpreter, so its Torch smoke test remains skipped there, but
+  the project `python` path verified direct local CPU Torch execution with
+  `python scripts/train_gpu_baseline.py --manifest-path /tmp/cv-accuracy-levers-gpu-smoke/manifest.jsonl --data-dir /tmp/cv-accuracy-levers-gpu-smoke --sample-mode true --sample-size 6 --runtime local_cpu --device cpu --image-size 24 --batch-size 2 --epochs 1`.
+  The smoke passed with runtime `local_cpu`, resolved device `cpu`, catalog
+  `serverless_stable_yau46e_catalog`, recall `1.0`, precision `0.5`, F1
+  `0.6666666666666666`, and false negatives `0`.

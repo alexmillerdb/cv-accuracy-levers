@@ -26,9 +26,10 @@ the sample path works.
   the IDE with Databricks Connect/serverless CPU during development.
 - **Databricks bundle jobs:** final packaging and integration tests after local
   and IDE-to-Databricks verification pass.
-- **Notebook GPU:** AI Runtime notebooks or classic MLR GPU clusters for heavier
-  image experiments.
-- **AI Runtime CLI/YAML:** deferred until script entrypoints are stable.
+- **AI Runtime CLI/YAML:** Phase 6 default for the first GPU run. Submit the
+  tested script path with `air run --file` and checked-in YAML.
+- **Notebook GPU:** optional thin wrappers after script/library behavior is
+  stable.
 - **AI Runtime SSH/Remote Development:** optional IDE path for interactive GPU
   development, not required for v1 CPU verification.
 
@@ -74,7 +75,7 @@ MLFLOW_TRACKING_URI=databricks
 MLFLOW_REGISTRY_URI=databricks-uc
 MLFLOW_EXPERIMENT_ID=
 # MLFLOW_EXPERIMENT_NAME=/Shared/cv-accuracy-levers
-CV_CATALOG=main
+CV_CATALOG=serverless_stable_yau46e_catalog
 CV_SCHEMA=cv_accuracy_levers
 CV_VOLUME=cv_accuracy_levers
 CV_VOLUME_SUBPATH=artifacts
@@ -248,21 +249,56 @@ against the baseline on the same split.
 
 ### Phase 6 - GPU Execution
 
-Validate one GPU run through AI Runtime notebooks or an MLR GPU cluster. Use
-AI Runtime notebooks first for CV demos, with MLflow tracking and UC Volumes for
-experiment artifacts and checkpoints. Use Jobs API or Databricks Asset Bundles
-as deployment paths only after the notebook path is stable.
+Use AI Runtime CLI as the first GPU execution path. The first meaningful GPU
+gate is a small real-image Torch/Torchvision training run over the public
+manifest on `GPU_1xA10`, submitted from the IDE/Codex workflow with
+`air run --file air/gpu_baseline_sample.yaml`. Notebooks stay thin and optional
+after the script/library behavior is stable.
 
-Current AI Runtime posture to re-check before starting Phase 6:
+Public interface:
 
-- Single-node AI Runtime is Public Preview.
-- Multi-GPU distributed APIs are Beta.
-- The `air` CLI is Beta and should remain documented experimental material in
-  this repo until a later phase validates the installed CLI against the current
-  workspace.
-- Use `1xA10` as the default small CV demo accelerator.
-- Use `1xH100` only when memory bound.
-- Use `8xH100` only for explicit multi-GPU Beta work.
+```bash
+python scripts/train_gpu_baseline.py \
+  --manifest-path "$CV_DATA_MANIFEST" \
+  --data-dir "$CV_DATA_DIR" \
+  --sample-mode true \
+  --runtime local_cpu \
+  --device cpu
+
+air run --file air/gpu_baseline_sample.yaml --dry-run -p <profile> \
+  --override env_variables.CV_DATA_MANIFEST="$CV_DATA_MANIFEST" \
+             env_variables.CV_DATA_DIR="$CV_DATA_DIR" \
+             env_variables.MLFLOW_EXPERIMENT_ID="$MLFLOW_EXPERIMENT_ID"
+air run --file air/gpu_baseline_sample.yaml --watch -p <profile> \
+  --override env_variables.CV_DATA_MANIFEST="$CV_DATA_MANIFEST" \
+             env_variables.CV_DATA_DIR="$CV_DATA_DIR" \
+             env_variables.MLFLOW_EXPERIMENT_ID="$MLFLOW_EXPERIMENT_ID"
+```
+
+The run must log `lever_name=gpu_baseline_real_image`, runtime context, sample
+mode, catalog/schema/volume settings, manifest path, GPU config, backbone,
+image size, epochs, batch size, selected validation threshold, defective-class
+recall, precision, false negatives, F1, PR AUC, ROC AUC, and artifacts:
+`predictions.json`, `threshold_sweep.json`, `training_summary.json`, and
+`leaderboard_row.json`.
+
+Phase 6 guardrails:
+
+- Keep `sample_mode=true` for the first AIR run. Full-data training requires an
+  explicit opt-in after public dataset, runtime, and cost review.
+- Use UC Volumes or another Databricks-accessible path for images and the
+  manifest. Keep `CV_DATA_MANIFEST`, `CV_DATA_DIR`, `CV_CATALOG`, `CV_SCHEMA`,
+  `CV_VOLUME`, `CV_VOLUME_SUBPATH`, `MLFLOW_TRACKING_URI`, and
+  `MLFLOW_EXPERIMENT_ID` env-driven. With AIR CLI v0.1.0, pass real run values
+  through `--override env_variables.<name>=...`; checked-in YAML does not
+  interpolate local shell variables inside `env_variables`.
+- Use `GPU_1xA10` as the default small CV demo accelerator.
+- Single-GPU only in this phase. Multi-GPU/distributed work remains deferred.
+- Do not claim the GPU run improves recall until it has an apples-to-apples
+  MLflow comparison against the baseline on the same split.
+- As of 2026-07-05, Phase 6 validation installed AIR CLI v0.1.0 locally after
+  the initial PATH check failed. Re-run `air --version` and
+  `air run --file ... --dry-run` after CLI upgrades.
 
 ## Planned Public Interfaces
 
@@ -305,6 +341,7 @@ Every run should also log runtime parameters:
 ## Deferred Work
 
 - Model Serving.
-- Full AI Runtime CLI/YAML execution.
+- Full-data GPU training.
+- Multi-GPU/distributed AI Runtime work.
 - Hybrid image+text beyond a guarded stub.
 - Production-grade object detection or segmentation.

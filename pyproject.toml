@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 dependencies = [
+  "Pillow>=10.0",
   "mlflow[databricks]>=3.1",
   "numpy>=1.26",
   "pandas>=2.0",
@@ -19,6 +20,10 @@ databricks = [
 ]
 dev = [
   "pytest>=8.0",
+]
+gpu = [
+  "torch>=2.3",
+  "torchvision>=0.18",
 ]
 
 [tool.pytest.ini_options]

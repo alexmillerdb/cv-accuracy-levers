@@ -23,10 +23,10 @@ F1, PR AUC, ROC AUC, and the selected operating threshold.
 - **Local CPU:** unit tests and tiny fixture/sample runs.
 - **Databricks serverless CPU:** smoke tests, Delta/UC metadata checks, and
   small MLflow-logged runs.
-- **Notebook GPU:** AI Runtime notebooks or classic MLR GPU clusters for
-  heavier image experiments.
-- **AI Runtime CLI:** deferred until script entrypoints are stable; intended for
-  reproducible remote GPU jobs rather than the first implementation pass.
+- **AI Runtime CLI:** Phase 6 default for the first GPU run, using checked-in
+  YAML and `air run --file` from the IDE/Codex workflow.
+- **Notebook GPU:** optional thin wrappers after script/library behavior is
+  stable.
 
 ## IDE Configuration
 
@@ -39,7 +39,7 @@ DATABRICKS_SERVERLESS_COMPUTE_ID=auto
 MLFLOW_TRACKING_URI=databricks
 MLFLOW_REGISTRY_URI=databricks-uc
 MLFLOW_EXPERIMENT_ID=
-CV_CATALOG=main
+CV_CATALOG=serverless_stable_yau46e_catalog
 CV_SCHEMA=cv_accuracy_levers
 CV_VOLUME=cv_accuracy_levers
 CV_VOLUME_SUBPATH=artifacts
@@ -241,6 +241,54 @@ databricks bundle run baseline_sample_cpu --profile <profile>
 
 Do not compare levers against the baseline unless both runs use the same split
 and threshold-selection logic.
+
+## GPU Baseline Verification
+
+Phase 6 adds a manifest-backed Torch image baseline as the AIR CLI GPU path.
+It is separate from `scripts/train_baseline.py`, which remains the synthetic
+centroid CPU control.
+
+For local GPU-path development, install the optional stack:
+
+```bash
+pip install -e ".[gpu]"
+```
+
+Run a local CPU Torch smoke with tiny/sample manifest images:
+
+```bash
+python scripts/train_gpu_baseline.py \
+  --manifest-path "$CV_DATA_MANIFEST" \
+  --data-dir "$CV_DATA_DIR" \
+  --sample-mode true \
+  --sample-size 32 \
+  --runtime local_cpu \
+  --device cpu
+```
+
+Submit the AIR CLI dry-run and GPU run only after the local script path works
+and `air` is installed:
+
+```bash
+air run --file air/gpu_baseline_sample.yaml --dry-run -p <profile> \
+  --override env_variables.CV_DATA_MANIFEST="$CV_DATA_MANIFEST" \
+             env_variables.CV_DATA_DIR="$CV_DATA_DIR" \
+             env_variables.MLFLOW_EXPERIMENT_ID="$MLFLOW_EXPERIMENT_ID"
+air run --file air/gpu_baseline_sample.yaml --watch -p <profile> \
+  --override env_variables.CV_DATA_MANIFEST="$CV_DATA_MANIFEST" \
+             env_variables.CV_DATA_DIR="$CV_DATA_DIR" \
+             env_variables.MLFLOW_EXPERIMENT_ID="$MLFLOW_EXPERIMENT_ID"
+```
+
+As of 2026-07-05, AIR CLI v0.1.0 is installed and `air --version` validates
+locally. The first AIR run uses `GPU_1xA10`, `sample_mode=true`, and env-driven
+`CV_DATA_MANIFEST`, `CV_DATA_DIR`, `CV_CATALOG`, `CV_SCHEMA`, `CV_VOLUME`,
+`CV_VOLUME_SUBPATH`, and MLflow experiment settings. Do not claim a GPU recall
+improvement until the run has an apples-to-apples MLflow comparison against the
+baseline on the same split.
+
+AIR CLI v0.1.0 does not interpolate local shell variables inside checked-in
+`env_variables`; pass real run values with `--override env_variables.<name>=...`.
 
 ## Threshold Tuning Verification
 

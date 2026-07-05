@@ -4,7 +4,7 @@ bundle:
 variables:
   catalog:
     description: Unity Catalog catalog for demo metadata.
-    default: main
+    default: serverless_stable_yau46e_catalog
   schema:
     description: Unity Catalog schema for demo metadata.
     default: cv_accuracy_levers
@@ -244,7 +244,7 @@ targets:
     mode: development
     default: true
     variables:
-      catalog: main
+      catalog: serverless_stable_yau46e_catalog
       schema: cv_accuracy_levers
       volume: cv_accuracy_levers
       volume_subpath: artifacts

@@ -10,16 +10,17 @@ environment:
     - numpy>=1.26
     - python-dotenv>=1.0
     - scikit-learn>=1.4
-  env_variables:
-    CV_RUNTIME: ai_runtime_cli
-    SAMPLE_MODE: "true"
-    MLFLOW_TRACKING_URI: databricks
-    MLFLOW_REGISTRY_URI: databricks-uc
-    MLFLOW_EXPERIMENT_NAME: cv-accuracy-levers-baseline-sample
-    CV_CATALOG: ${CV_CATALOG}
-    CV_SCHEMA: ${CV_SCHEMA}
-    CV_VOLUME: ${CV_VOLUME}
-    CV_VOLUME_SUBPATH: ${CV_VOLUME_SUBPATH}
+
+env_variables:
+  CV_RUNTIME: ai_runtime_cli
+  SAMPLE_MODE: "true"
+  MLFLOW_TRACKING_URI: databricks
+  MLFLOW_REGISTRY_URI: databricks-uc
+  MLFLOW_EXPERIMENT_NAME: cv-accuracy-levers-baseline-sample
+  CV_CATALOG: serverless_stable_yau46e_catalog
+  CV_SCHEMA: cv_accuracy_levers
+  CV_VOLUME: cv_accuracy_levers
+  CV_VOLUME_SUBPATH: artifacts
 
 compute:
   num_accelerators: 1
@@ -28,7 +29,7 @@ compute:
 code_source:
   type: snapshot
   snapshot:
-    root_path: .
+    root_path: ..
 
 command: >-
   python $CODE_SOURCE_PATH/scripts/train_baseline.py

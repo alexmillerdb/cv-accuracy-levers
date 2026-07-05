@@ -401,10 +401,64 @@ after local and IDE-to-Databricks checks pass:
 databricks bundle run label_quality_embeddings_sample_cpu --profile <profile>
 ```
 
+## Crop-First A/B Verification
+
+Phase 5.4 adds a sample-mode crop-first A/B comparison over deterministic
+region-emphasis features derived from the existing synthetic whole-image
+features:
+
+```bash
+python scripts/run_crop_first_ab.py --sample-mode true --runtime local_cpu
+```
+
+This is a CPU smoke-test comparison, not real object localization. It trains the
+baseline and crop-first sample scorers on the same group-aware split, selects
+each arm's threshold on validation only, evaluates both arms on test only, and
+logs baseline-vs-crop deltas plus review rows for changed test groups.
+
+To log the crop-first A/B run to a local MLflow directory:
+
+```bash
+python scripts/run_crop_first_ab.py \
+  --sample-mode true \
+  --runtime local_cpu \
+  --log-mlflow \
+  --tracking-uri file:/tmp/cv-accuracy-levers-crop-first-mlruns
+```
+
+The MLflow run logs `crop_first_comparison_rows.json`,
+`crop_first_review_rows.json`, `crop_first_summary.json`,
+`validation_sweeps.json`, `leaderboard_row.json`, and `predictions.json`.
+Do not claim a recall gain unless `delta.recall_defective` improves on the same
+split with the same validation-only threshold-selection rule.
+
+For IDE-to-Databricks MLflow smoke verification:
+
+```bash
+python scripts/run_crop_first_ab.py \
+  --sample-mode true \
+  --runtime databricks_serverless_cpu \
+  --log-mlflow \
+  --tracking-uri databricks
+```
+
+For final packaged Databricks serverless CPU validation, use the bundle job
+after local and IDE-to-Databricks checks pass:
+
+```bash
+databricks bundle run crop_first_ab_sample_cpu --profile <profile>
+```
+
 ## AI Runtime CLI
 
-AI Runtime CLI support is deferred infrastructure for reproducible GPU
-submissions. The example contract in [`air/baseline_sample.yaml`](air/baseline_sample.yaml)
+AI Runtime and AIR remain Phase 6+ material. Databricks currently documents
+single-node AI Runtime as Public Preview, multi-GPU distributed APIs as Beta,
+and the `air` CLI as Beta. Start GPU CV work notebook-first on serverless GPU,
+then use Jobs API or Databricks Asset Bundles after the notebook path is stable.
+Use `1xA10` as the default small CV demo accelerator, `1xH100` only when memory
+bound, and `8xH100` only for explicit multi-GPU Beta work.
+
+The example contract in [`air/baseline_sample.yaml`](air/baseline_sample.yaml)
 calls `scripts/train_baseline.py` in `SAMPLE_MODE=true` with
 `CV_RUNTIME=ai_runtime_cli`. Validate that YAML against the installed `air` CLI
 schema before submitting it; AIR is not required for local or serverless CPU

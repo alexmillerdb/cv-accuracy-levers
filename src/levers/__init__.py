@@ -3,6 +3,14 @@
 from levers.data import DatasetRecord, make_grouped_split, validate_group_splits
 from levers.eval import BinaryMetrics, binary_classification_metrics
 from levers.config import ProjectConfig
+from levers.crop_first import (
+    CropFirstABResult,
+    CropFirstArmResult,
+    CropFirstReviewRow,
+    build_crop_first_sample_features,
+    compare_crop_first_to_baseline,
+    run_sample_crop_first_ab,
+)
 from levers.error_review import (
     FalseNegativeReviewResult,
     FalseNegativeReviewRow,
@@ -34,6 +42,9 @@ from levers.threshold_tuning import (
 
 __all__ = [
     "BinaryMetrics",
+    "CropFirstABResult",
+    "CropFirstArmResult",
+    "CropFirstReviewRow",
     "DatasetRecord",
     "EmbeddingRow",
     "FalseNegativeReviewResult",
@@ -46,15 +57,18 @@ __all__ = [
     "ThresholdPoint",
     "ThresholdTuningResult",
     "binary_classification_metrics",
+    "build_crop_first_sample_features",
     "build_false_negative_review_rows",
     "build_sample_embedding_rows",
     "copy_images_to_uc_volume",
+    "compare_crop_first_to_baseline",
     "find_label_quality_issues",
     "make_grouped_split",
     "normalize_manifest_rows",
     "persist_ingest_to_uc",
     "review_false_negatives_from_predictions",
     "run_sample_false_negative_review",
+    "run_sample_crop_first_ab",
     "run_sample_label_quality_embeddings",
     "run_sample_threshold_tuning",
     "threshold_sweep",

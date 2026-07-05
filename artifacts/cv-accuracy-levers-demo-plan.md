@@ -224,10 +224,45 @@ Treat all rows as review candidates only; synthetic injection exists only to
 exercise non-empty artifact paths and must not be presented as a real dataset
 defect.
 
+#### Phase 5.4 - Crop-First A/B
+
+Use deterministic sample crop/region-emphasis features to compare crop-first
+scoring against the same baseline whole-image sample split. This phase is
+CPU/sample-only: do not add real image crops, Torch, torchvision, OpenCV,
+object localization, full-dataset training, or GPU execution.
+
+Public interface:
+
+```bash
+python scripts/run_crop_first_ab.py --sample-mode true --runtime local_cpu
+python scripts/run_crop_first_ab.py --sample-mode true --runtime local_cpu --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-crop-first-mlruns
+```
+
+The run must log `lever_name=crop_first_ab`, sample/runtime/catalog/schema/
+volume params, min recall, split/feature seeds, crop emphasis, validation-only
+selected thresholds for both arms, baseline test metrics, crop-first test
+metrics, crop-minus-baseline deltas, changed prediction counts, review rows for
+changed test groups, validation sweeps, a leaderboard row, and predictions.
+Any recall-improvement claim must be limited to an apples-to-apples comparison
+against the baseline on the same split.
+
 ### Phase 6 - GPU Execution
 
-Validate one GPU run through AI Runtime notebooks or an MLR GPU cluster. Add AI
-Runtime CLI/YAML only after notebook behavior and script entrypoints are stable.
+Validate one GPU run through AI Runtime notebooks or an MLR GPU cluster. Use
+AI Runtime notebooks first for CV demos, with MLflow tracking and UC Volumes for
+experiment artifacts and checkpoints. Use Jobs API or Databricks Asset Bundles
+as deployment paths only after the notebook path is stable.
+
+Current AI Runtime posture to re-check before starting Phase 6:
+
+- Single-node AI Runtime is Public Preview.
+- Multi-GPU distributed APIs are Beta.
+- The `air` CLI is Beta and should remain documented experimental material in
+  this repo until a later phase validates the installed CLI against the current
+  workspace.
+- Use `1xA10` as the default small CV demo accelerator.
+- Use `1xH100` only when memory bound.
+- Use `8xH100` only for explicit multi-GPU Beta work.
 
 ## Planned Public Interfaces
 

@@ -172,6 +172,10 @@ configured UC volume, run from Databricks or an IDE session with Databricks
 Connect/serverless CPU configured:
 
 ```bash
+uv pip install -e '.[databricks]'
+```
+
+```bash
 python scripts/prepare_dataset.py \
   --source manifest \
   --manifest-path /path/to/public_manifest.jsonl \

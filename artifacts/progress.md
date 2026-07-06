@@ -14,7 +14,7 @@ verified. Keep entries short and include exact verification commands.
 | 4 - Notebook baseline | Local complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/train_baseline.py --sample-mode true --runtime local_cpu`; `python scripts/train_baseline.py --sample-mode true --runtime local_cpu --log-mlflow --tracking-uri file:/tmp/cv-accuracy-levers-baseline-mlruns` | Sample-mode baseline launches locally without bundle deployment. Serverless CPU bundle job is added but not required for local verification. |
 | 4.5 - Public dataset ingest | Complete | `python -m compileall src tests scripts`; `pytest`; `python scripts/prepare_dataset.py --source manifest --manifest-path /tmp/cv-accuracy-levers-ingest-smoke/manifest.jsonl --data-dir /tmp/cv-accuracy-levers-ingest-smoke/images --output-path /tmp/cv-accuracy-levers-ingest-smoke/normalized_manifest_uc_copy.jsonl --sample-mode true --sample-size 3 --runtime local_cpu --catalog demo_catalog --schema demo_schema --volume demo_volume --volume-subpath cv --copy-images-to-uc-volume --uc-image-dir /tmp/cv-accuracy-levers-ingest-smoke/uc-volume/images`; `python -c "import yaml; yaml.safe_load(open('databricks.yml')); print('databricks_yml_ok')"`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm` | Added license-first manifest ingest plus optional UC table/volume persistence before Phase 5 levers. |
 | 5 - Accuracy levers | In progress | `python -m compileall src tests scripts`; `pytest`; `python scripts/tune_threshold.py --sample-mode true --runtime local_cpu`; `python scripts/review_false_negatives.py --sample-mode true --runtime local_cpu --review-threshold 0.95`; `python scripts/review_label_quality_embeddings.py --sample-mode true --runtime local_cpu --inject-synthetic-label-issue`; `python scripts/run_crop_first_ab.py --sample-mode true --runtime local_cpu`; `python scripts/run_crop_first_ab.py --sample-mode true --runtime databricks_serverless_cpu --log-mlflow --tracking-uri databricks --experiment-name /Shared/cv-accuracy-levers`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle validate --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle deploy --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext databricks bundle run crop_first_ab_sample_cpu --profile fevm` | Phase 5.1 threshold tuning, Phase 5.2 false-negative review, Phase 5.3 label-quality embeddings, and Phase 5.4 crop-first A/B complete; transfer-backbone not started. |
-| 6 - GPU execution | In progress | `python -m compileall src tests scripts`; `pytest`; `python scripts/train_gpu_baseline.py --manifest-path /tmp/cv-accuracy-levers-gpu-smoke/manifest.jsonl --data-dir /tmp/cv-accuracy-levers-gpu-smoke --sample-mode true --sample-size 6 --runtime local_cpu --device cpu --image-size 24 --batch-size 2 --epochs 1`; `python -c "import yaml; yaml.safe_load(open('databricks.yml')); yaml.safe_load(open('air/gpu_baseline_sample.yaml')); yaml.safe_load(open('air/baseline_sample.yaml')); print('yaml_ok')"`; `air --version`; `air run --file air/gpu_baseline_sample.yaml --dry-run -p fevm --json` | AIR CLI-first GPU path scaffolded and dry-run validated with `GPU_1xA10`; local CPU Torch smoke passed; real GPU submit is pending Databricks-accessible `CV_DATA_MANIFEST`/`CV_DATA_DIR` and explicit approval. Default catalog is `serverless_stable_yau46e_catalog`. |
+| 6 - GPU execution | In progress | `python -m compileall src tests scripts`; `pytest`; `python scripts/train_gpu_baseline.py --manifest-path /tmp/cv-accuracy-levers-gpu-smoke/manifest.jsonl --data-dir /tmp/cv-accuracy-levers-gpu-smoke --sample-mode true --sample-size 6 --runtime local_cpu --device cpu --image-size 24 --batch-size 2 --epochs 1`; `python -c "import yaml; yaml.safe_load(open('databricks.yml')); yaml.safe_load(open('air/gpu_baseline_sample.yaml')); yaml.safe_load(open('air/baseline_sample.yaml')); print('yaml_ok')"`; `air --version`; `python scripts/train_gpu_baseline.py --manifest-path data/beans/manifest.jsonl --data-dir data/beans/images --sample-mode true --sample-size 32 --runtime local_cpu --device cpu --image-size 64 --batch-size 4 --epochs 1`; `DATABRICKS_AUTH_STORAGE=plaintext databricks fs cp /tmp/cv-accuracy-levers-gpu-real-manifest.jsonl dbfs:/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/gpu_baseline_manifest.jsonl --overwrite --profile fevm`; `DATABRICKS_AUTH_STORAGE=plaintext air run --file air/gpu_baseline_sample.yaml --dry-run -p fevm --json --override env_variables.CV_DATA_MANIFEST="/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/gpu_baseline_manifest.jsonl" env_variables.CV_DATA_DIR= env_variables.MLFLOW_EXPERIMENT_ID=""` | AIR CLI-first GPU path scaffolded and dry-run validated with `GPU_1xA10`; local CPU Torch smoke passed on generated smoke data and on the 100-row MIT-licensed Beans real-image sample. UC image and manifest staging are complete for AIR; GPU `--watch` is pending explicit submit. Default catalog is `serverless_stable_yau46e_catalog`. |
 
 ## Log
 
@@ -279,3 +279,96 @@ verified. Keep entries short and include exact verification commands.
   The smoke passed with runtime `local_cpu`, resolved device `cpu`, catalog
   `serverless_stable_yau46e_catalog`, recall `1.0`, precision `0.5`, F1
   `0.6666666666666666`, and false negatives `0`.
+- 2026-07-06: Started Phase 6.1 real-data AIR GPU sample from commit
+  `00d707f`. Scope is the first small real-image training run on Databricks
+  Serverless GPU through `air run --watch`, using an existing permissively
+  licensed manifest and image directory supplied outside git by
+  `CV_DATA_MANIFEST` and `CV_DATA_DIR`. Keeping `sample_mode=true`,
+  `GPU_1xA10`, `tiny_cnn`, one epoch, and no recall-improvement claim.
+- 2026-07-06: Ran Phase 6.1 preflight. `python -m compileall src tests scripts`
+  passed. `pytest` passed with 74 tests and 1 skipped optional Torch smoke
+  under the shell interpreter. `air --version` reported Databricks AI Runtime
+  CLI v0.1.0. `CV_DATA_MANIFEST` and `CV_DATA_DIR` were not set in the shell or
+  `.env`, and a bounded search only found prior synthetic smoke manifests, not
+  a real public dataset manifest. The planned real-data local CPU Torch smoke
+  command
+  `set -a; source .env; set +a; python scripts/train_gpu_baseline.py --manifest-path "$CV_DATA_MANIFEST" --data-dir "$CV_DATA_DIR" --sample-mode true --sample-size 32 --runtime local_cpu --device cpu --image-size 64 --batch-size 4 --epochs 1`
+  failed with `ValueError: Set CV_DATA_MANIFEST or pass --manifest-path.` This
+  is an input-data blocker, not a training-code failure.
+- 2026-07-06: Validated AIR packaging for the intended UC manifest path with
+  `DATABRICKS_AUTH_STORAGE=plaintext air run --file air/gpu_baseline_sample.yaml --dry-run -p fevm --json --override env_variables.CV_DATA_MANIFEST="/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/gpu_baseline_manifest.jsonl" env_variables.CV_DATA_DIR= env_variables.MLFLOW_EXPERIMENT_ID=""`.
+  The sandboxed attempt retried workspace HTTPS and was interrupted with
+  `INTERRUPTED`; the approved-network rerun returned `DRY_RUN_OK`. The payload
+  used repo-root snapshot packaging, `GPU_1xA10`, runtime
+  `ai_runtime_cli_gpu`, catalog `serverless_stable_yau46e_catalog`, schema
+  `cv_accuracy_levers`, volume `cv_accuracy_levers`, volume subpath
+  `artifacts`, `sample_mode=true`, and
+  `/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/gpu_baseline_manifest.jsonl`.
+  `DATABRICKS_AUTH_STORAGE=plaintext databricks fs ls dbfs:/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest --profile fevm`
+  initially hit sandbox DNS resolution; the approved-network rerun listed only
+  the prior `image_manifest` entry, so `gpu_baseline_manifest.jsonl` is not
+  staged. Skipped `scripts/prepare_dataset.py`, `databricks fs cp`, and
+  `air run --watch` because the required local real-data source manifest and
+  image directory were unavailable. No MLflow GPU run was created and no recall
+  improvement is claimed.
+- 2026-07-06: Created the Phase 6.1 real-image sample from the public
+  `AI-Lab-Makerere/beans` Hugging Face dataset. The dataset API reported
+  `license: mit`, which is accepted by the repo license guard. Downloaded
+  `data/train-00000-of-00001.parquet`, `data/validation-00000-of-00001.parquet`,
+  and `data/test-00000-of-00001.parquet` with `curl -L` into
+  `data/beans/raw/`. Extracted 100 JPEGs into `data/beans/images` and wrote
+  `data/beans/manifest.jsonl`, both under gitignored `data/`. The sample has
+  60 train, 20 val, and 20 test rows; 68 defective rows and 32 normal rows.
+  `healthy` maps to `normal`; `angular_leaf_spot` and `bean_rust` map to
+  `defect`. The manifest is ordered round-robin by split and label so
+  `--sample-size 32` includes both train/test classes and validation positives.
+- 2026-07-06: Verified local CPU Torch training on the Beans real-image sample
+  with
+  `python scripts/train_gpu_baseline.py --manifest-path data/beans/manifest.jsonl --data-dir data/beans/images --sample-mode true --sample-size 32 --runtime local_cpu --device cpu --image-size 64 --batch-size 4 --epochs 1`.
+  The run passed with runtime `local_cpu`, resolved device `cpu`, recall `1.0`,
+  precision `0.5`, F1 `0.6666666666666666`, AUC PR `0.8261904761904761`, AUC
+  ROC `0.8`, `comparison_status=needs_same_split_baseline_comparison`, and no
+  recall-improvement claim.
+- 2026-07-06: Staged the Beans sample to UC for AIR. Ran
+  `DATABRICKS_AUTH_STORAGE=plaintext DATABRICKS_CONFIG_PROFILE=fevm DATABRICKS_SERVERLESS_COMPUTE_ID=auto python scripts/prepare_dataset.py --source manifest --manifest-path data/beans/manifest.jsonl --data-dir data/beans/images --output-path /tmp/cv-accuracy-levers-gpu-real-manifest.jsonl --sample-mode true --sample-size 100 --runtime databricks_serverless_cpu --catalog serverless_stable_yau46e_catalog --schema cv_accuracy_levers --volume cv_accuracy_levers --volume-subpath artifacts --copy-images-to-uc-volume --uc-image-upload-mode sdk --databricks-profile fevm --write-uc --uc-table image_manifest`.
+  The sandboxed run hit DNS resolution for the workspace host. The
+  approved-network rerun uploaded images and wrote the normalized local
+  manifest, then failed only at the UC Delta table write because the project
+  `.venv` does not have `pyspark` or `databricks-connect` installed. The
+  normalized manifest contains 100 rows with image paths under
+  `/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/images`.
+  Verified the UC image upload with
+  `DATABRICKS_AUTH_STORAGE=plaintext databricks fs ls dbfs:/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/images --profile fevm`
+  and a representative nested image listing.
+- 2026-07-06: Copied the normalized AIR manifest to UC with
+  `DATABRICKS_AUTH_STORAGE=plaintext databricks fs cp /tmp/cv-accuracy-levers-gpu-real-manifest.jsonl dbfs:/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/gpu_baseline_manifest.jsonl --overwrite --profile fevm`.
+  The sandboxed copy hit DNS resolution; the approved-network rerun succeeded.
+  Verified
+  `dbfs:/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/gpu_baseline_manifest.jsonl`
+  exists alongside the prior `image_manifest` entry. Re-ran AIR dry-run with
+  `DATABRICKS_AUTH_STORAGE=plaintext air run --file air/gpu_baseline_sample.yaml --dry-run -p fevm --json --override env_variables.CV_DATA_MANIFEST="/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/gpu_baseline_manifest.jsonl" env_variables.CV_DATA_DIR= env_variables.MLFLOW_EXPERIMENT_ID=""`
+  and received `DRY_RUN_OK` with `GPU_1xA10` and repo-root snapshot packaging.
+  AIR should use
+  `CV_DATA_MANIFEST=/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/gpu_baseline_manifest.jsonl`
+  and blank `CV_DATA_DIR`. GPU `--watch` submission has not been started yet.
+- 2026-07-06: Installed the existing repo Databricks extra into the project
+  `.venv` with `uv pip install -e '.[databricks]'`, which installed
+  `databricks-connect==16.1.7` plus Spark Connect dependencies. Verified
+  imports for `databricks.connect`, `pyspark`, and `databricks.sdk`. Also added
+  the matching README note for IDE UC ingest setup.
+- 2026-07-06: Re-ran the Beans sample UC ingest with `--write-uc` after
+  installing Databricks Connect. The sandboxed attempt reproduced the workspace
+  DNS blocker; the approved-network rerun of
+  `DATABRICKS_AUTH_STORAGE=plaintext DATABRICKS_CONFIG_PROFILE=fevm DATABRICKS_SERVERLESS_COMPUTE_ID=auto python scripts/prepare_dataset.py --source manifest --manifest-path data/beans/manifest.jsonl --data-dir data/beans/images --output-path /tmp/cv-accuracy-levers-gpu-real-manifest.jsonl --sample-mode true --sample-size 100 --runtime databricks_serverless_cpu --catalog serverless_stable_yau46e_catalog --schema cv_accuracy_levers --volume cv_accuracy_levers --volume-subpath artifacts --copy-images-to-uc-volume --uc-image-upload-mode sdk --databricks-profile fevm --write-uc --uc-table image_manifest`
+  passed. It wrote 100 records, 100 groups, 68 positives, 32 negatives, 60
+  train, 20 val, and 20 test rows. UC outputs were
+  `serverless_stable_yau46e_catalog.cv_accuracy_levers.image_manifest` and
+  `dbfs:/Volumes/serverless_stable_yau46e_catalog/cv_accuracy_levers/cv_accuracy_levers/artifacts/ingest/image_manifest`.
+  A Databricks Connect SQL count verified `image_manifest_count=100`,
+  `image_manifest_positives=68`, and `image_manifest_negatives=32`.
+- 2026-07-06: Re-verified local gates after installing Databricks Connect.
+  `python -m compileall src tests scripts` passed. Shell `pytest` passed with
+  74 tests and 1 optional Torch smoke skipped under the Miniconda interpreter.
+  The project `.venv` lacked pytest, so installed the existing dev extra with
+  `uv pip install -e '.[dev,databricks]'`; then `python -m pytest` passed with
+  75 tests under Python 3.11.13, including the local Torch smoke.
